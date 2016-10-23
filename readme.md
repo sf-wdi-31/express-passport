@@ -1,33 +1,77 @@
+<!--
+Creator: DC Team
+Last Edited by: Brianna
+Location: SF
+-->
+
+![](https://ga-dash.s3.amazonaws.com/production/assets/logo-9f88ae6c9c3871690e33280fcf557f33.png)
+
 # Local Authentication with Express and Passport
 
-## Learning Objectives
+### Why is this important?
+<!-- framing the "why" in big-picture/real world examples -->
+*This workshop is important because:*
 
-- Create a login form with email & password
-- Use passport-local to find a user & verify their password
-- Restrict access to API without an authenticated user
+Controlling access to data is a key part of many modern web applications. Rails does a lot of the work of authentication and authorization for us behind the scenes.  Today we'll see that Rails's "local" (in-app) authentication strategy generalizes to other languages and frameworks. We'll use a library called Passport, for NodeJS, and we'll specifically dive into its `passport-local` implementation.  
 
-## Preparation
+Local authentication isn't the only option, though.  We'll get a brief overview of OAuth and token-based strategies, too.
 
-- Create an express application and add CRUD/REST resources
-- Create a Mongoose Model
-- Describe an authentication model
+### What are the objectives?
+<!-- specific/measurable goal for students to achieve -->
+*After this workshop, developers will be able to:*
 
-## Passport and the logics - Intro (5 mins)
+* Explain key steps of a framework-independent local authentication strategy.
+* Authenticate users with a "local" strategy with the Passport library.
+* Restrict access to data based on whether a user is authenticated.
+* Describe alternate authentication or authorization strategies.
+
+### Where should we be now?
+<!-- call out the skills that are prerequisites -->
+*Before this workshop, developers should already be able to:*
+
+* Implement client-side forms and AJAX calls.
+* Create an express application with RESTful routes.
+* Set up schemas and models with Mongoose.
+* CRUD data in a MongoDB database through Mongoose.  
+* Describe the authentication strategy used with `has_secure_password` from Ruby on Rails.
+
+
+## Passport - Intro (5 mins)
 
 From the [passport website](http://passportjs.org/docs):
 
-"_Passport is authentication Middleware for Node. It is designed to serve a singular purpose: authenticate requests. When writing modules, encapsulation is a virtue, so Passport delegates all other functionality to the application. This separation of concerns keeps code clean and maintainable, and makes Passport extremely easy to integrate into an application._
+"_Passport is authentication middleware for Node. It is designed to serve a singular purpose: authenticate requests. When writing modules, encapsulation is a virtue, so Passport delegates all other functionality to the application. This separation of concerns keeps code clean and maintainable, and makes Passport extremely easy to integrate into an application.
 
-_In modern web applications, authentication can take a variety of forms. Traditionally, users log in by providing a username and password. With the rise of social networking, single sign-on using an OAuth provider such as Facebook or Twitter has become a popular authentication method. Services that expose an API often require token-based credentials to protect access._"
+In modern web applications, authentication can take a variety of forms. Traditionally, users log in by providing a username and password. With the rise of social networking, single sign-on using an OAuth provider such as Facebook or Twitter has become a popular authentication method. Services that expose an API often require token-based credentials to protect access.
 
-### Strategies
+Passport recognizes that each application has unique authentication requirements. Authentication mechanisms, known as strategies, are packaged as individual modules. Applications can choose which strategies to employ, without creating unnecessary dependencies._"
 
-The main concept when using passport is to register _Strategies_.  A strategy is a passport Middleware that will create some action in the background and execute a callback; the callback should be called with different arguments depending on whether the action that has been performed in the strategy was successful or not. Based on this and on some config params, passport will redirect the request to different paths.
+#### Check for Understanding
 
-Because strategies are packaged as individual modules, we can pick and choose which ones we need for our application. This logic allows the developer to keep the code simple - without unnecessary dependencies - in the controller and delegate the proper authentication job to some specific passport code.
+1. What language and/or framework(s) is Passport meant for?  
+1. What are Passport's main selling points?   
+
+
+### Local Authentication
+
+What was the strategy we used to authenticate users with Ruby on Rails?
+
+### Strategies in Passport
+
+The main concept when using passport is to register **strategies**.  
+
+In Passport, a strategy is just some NodeJS middleware that we configure to manage authentication.  
+
+With `passport-local`'s `LocalStrategy`, the middleware takes in the user's login information (usually a username and password) as well as a callback. The strategy interacts with the database to check whether the user exists and whether they've used the correct password.  After the check, the callback is called with three arguments:  any server error that occurred (or `null`), any user who was successfully authenticated (or `false`), and an optional error message to specify what went wrong.
+
+Once we have a strategy set up, we can use `passport.authenticate` inside a route or controller to say which authentication strategy to use and what should happen next in cases where authentication succeeds or fails.
+
+There are a few configuration steps, and of course we have to set up front-end forms to gather users' login information. Overall, though, Passport allows rather simple, modular authentication for various strategies.
 
 
 ## Implementing Passport.js - Codealong (25 mins)
+
+[documentation from Passport](http://passportjs.org/docs/username-password)
 
 #### Setup/Review Starter Code
 
@@ -80,7 +124,7 @@ Let's have a quick look at the `users.js` controller. As you can see, the file i
 // Restricted page
 ```
 
-The statics controller, just has the home action.
+The statics controller just has the home action.
 
 #### Routes.js
 
