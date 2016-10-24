@@ -1,26 +1,17 @@
 // @AUTH
 
 var db = require('../models');
+var passport = require('passport');
 
 // POST /api/users
 function create(req, res){
   console.log('creating user', req.body);
-  db.User.findOne({email: req.body.email}, function(err, user){
-    if(user){
-      console.log('email taken', user);
-      res.status(500).send("Email is taken.");
-    } else {
-      console.log('creating');
-      db.User.create(req.body, function(err, createdUser){
-        if(createdUser) {
-          res.json(createdUser);
-        } else {
-          res.status(500).json(err);
-        }
-
-      });
-    }
-  })
+  var signupAttempt = passport.authenticate('local-signup', {
+    successRedirect: '/',
+    failureRedirect: '/',
+    failureFlash: true  // use flash message from verify callback
+  });
+  signupAttempt(req, res);
 }
 
 // GET /api/users/:userId

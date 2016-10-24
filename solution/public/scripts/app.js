@@ -15,7 +15,7 @@ $(document).ready(function() {
   $logout = $('#logout');
 
   $logout.hide();
-  $signup.hide();
+  $login.hide();
 
   $signup.on('submit', function(e){
     e.preventDefault();

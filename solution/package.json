@@ -18,9 +18,14 @@
   },
   "homepage": "https://github.com/sf-wdi-labs/tunely#readme",
   "dependencies": {
+    "bcrypt": "^0.8.7",
     "body-parser": "^1.15.2",
     "bower": "^1.7.9",
+    "connect-flash": "^0.1.1",
     "express": "^4.13.3",
-    "mongoose": "^4.6.0"
+    "express-session": "^1.14.1",
+    "mongoose": "^4.6.0",
+    "passport": "^0.3.2",
+    "passport-local": "^1.0.0"
   }
 }
