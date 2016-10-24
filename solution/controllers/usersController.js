@@ -8,10 +8,9 @@ function create(req, res){
   console.log('creating user', req.body);
   var signupAttempt = passport.authenticate('local-signup', {
     successRedirect: '/',
-    failureRedirect: '/',
-    failureFlash: true  // use flash message from verify callback
+    failureRedirect: '/'
   });
-  signupAttempt(req, res);
+  return signupAttempt(req, res);
 }
 
 // GET /api/users/:userId

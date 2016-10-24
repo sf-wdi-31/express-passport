@@ -30,12 +30,6 @@ var passport = require('passport');
 app.use(passport.initialize());
 app.use(passport.session());
 
-// for flash messages
-var flash = require('connect-flash');
-app.use(flash());
-
-
-
 require('./config/passport')(passport);
 // END @AUTH
 

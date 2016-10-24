@@ -29,7 +29,7 @@ $(document).ready(function() {
   });
 
   function signupSuccess(response){
-    console.log(response);
+    console.log("signup successful");
     $signup.hide();
     $login.hide();
     $logout.show();
@@ -52,7 +52,7 @@ $(document).ready(function() {
   })
 
   function loginSuccess(response){
-    console.log(response);
+    console.log("login successful");
     $signup.hide();
     $login.hide();
     $logout.show();
