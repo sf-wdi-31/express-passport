@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>tunely</title>
+
+    <!-- STYLESHEETS -->
+    <link rel="stylesheet" href="vendor/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles/styles.css">
+
+    <!-- VENDOR SCRIPTS -->
+    <script src="vendor/jQuery/dist/jquery.min.js"></script>
+    <script src="vendor/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="vendor/handlebars/handlebars.min.js"></script>
+
+    <!-- APPLICATION SCRIPTS -->
+    <script src="scripts/app.js"></script>
+  </head>
+  <body>
+    <div class="jumbotron">
+      <div class="container">
+        <h1>Welcome to tunely</h1>
+        <p>Your music binder!</p>
+      </div>
+    </div>
+
+
+
+
+    <!-- BEGIN FORM SAMPLE -->
+
+    <section id='album-form' class="container">
+      <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+
+        <form class="form-horizontal">
+          <fieldset>
+
+            <!-- Form Name -->
+            <legend>Add New Album</legend>
+
+            <!-- Text input-->
+            <div class="form-group">
+              <label class="col-md-4 control-label" for="name">Album Name</label>
+              <div class="col-md-4">
+              <input id="name" name="name" type="text" placeholder="" class="form-control input-md" required="">
+
+              </div>
+            </div>
+
+            <!-- Text input-->
+            <div class="form-group">
+              <label class="col-md-4 control-label" for="artistName">Artist Name</label>
+              <div class="col-md-4">
+              <input id="textinput" name="artistName" type="text" placeholder="" class="form-control input-md">
+
+              </div>
+            </div>
+
+            <!-- Text input-->
+            <div class="form-group">
+              <label class="col-md-4 control-label" for="releaseDate">Release Date</label>
+              <div class="col-md-4">
+              <input id="releaseDate" name="releaseDate" type="text" placeholder="1992" class="form-control input-md">
+
+              </div>
+            </div>
+
+            <!-- Textarea -->
+            <div class="form-group">
+              <label class="col-md-4 control-label" for="genres">Genres (separated by commas)</label>
+              <div class="col-md-4">
+                <textarea class="form-control" id="genres" name="genres">rock, pop</textarea>
+              </div>
+            </div>
+
+
+            <!-- Button -->
+            <div class="form-group">
+              <label class="col-md-4 control-label" for="singlebutton">Save Album</label>
+              <div class="col-md-4">
+                <button id="singlebutton" name="singlebutton" class="btn btn-primary">Submit</button>
+              </div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+      </div>
+    </section>
+
+     <!--   END FORM SAMPLE -->
+
+
+
+
+    <section class="container">
+      <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+          <h2>Albums</h2>
+        </div>
+      </div>
+      <!-- albums! -->
+      <div id='albums'>
+        <script id='album-template' type='text/x-handlebars-template'>
+          <!-- one album -->
+          <div class="row album" data-album-id="{{_id}}">
+
+            <div class="col-md-10 col-md-offset-1">
+              <div class="panel panel-default">
+                <div class="panel-body">
+
+
+                <!-- begin album internal row -->
+                  <div class='row'>
+                    <div class="col-md-3 col-xs-12 thumbnail album-art">
+                      <img src="images/800x800.png" alt="album image">
+                    </div>
+
+                    <div class="col-md-9 col-xs-12">
+                      <ul class="list-group">
+                        <li class="list-group-item">
+                          <h4 class='inline-header'>Album Name:</h4>
+                          <span class='album-name'>{{name}}</span>
+                        </li>
+
+                        <li class="list-group-item">
+                          <h4 class='inline-header'>Artist Name:</h4>
+                          <span class='artist-name'>{{artistName}}</span>
+                        </li>
+
+                        <li class="list-group-item">
+                          <h4 class='inline-header'>Released date:</h4>
+                          <span class='album-releaseDate'>{{releaseDate}}</span>
+                        </li>
+
+
+                        <li class="list-group-item">
+                          <h4 class="inline-header">Songs:</h4>
+                          <span>&ndash; {{#each songs}} ({{trackNumber}}) {{name}} &ndash;  {{/each}}</span>
+                        </li>
+
+                      </ul>
+                    </div>
+
+                  </div>
+                  <!-- end of album internal row -->
+
+                  <div class='panel-footer'>
+                    <div class='panel-footer'>
+                      <button class='btn btn-primary add-song'>Add Song</button>
+                      <button class='btn btn-danger delete-album'>Delete Album</button>
+                      <button class='btn btn-info edit-album'>Edit Album</button>
+                      <button class='btn btn-success save-album hidden'>Save Changes</button>
+                      <button class='btn btn-info edit-songs'>Edit Songs</button>
+                    </div>
+
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- end one album -->
+        </script>
+
+      </div>
+    </section>
+
+    <!-- begin songModal: this is not visible until you call .modal() on it -->
+    <div class="modal fade" tabindex="-1" role="dialog" id="songModal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Create Song</h4>
+          </div>
+          <div class="modal-body">
+
+            <fieldset class='form-horizontal'>
+              <!-- Text input-->
+              <div class="form-group">
+                <label class="col-md-4 control-label" for="songName">Song Name</label>
+                <div class="col-md-4">
+                  <input id="songName" name="songName" type="text" placeholder="" class="form-control input-md" required="">
+                </div>
+              </div>
+
+              <!-- Number input-->
+              <div class="form-group">
+                <label class="col-md-4 control-label" for="trackNumber">Track Number</label>
+                <div class="col-md-4">
+                  <input id="trackNumber" name="trackNumber" type="number" placeholder="" class="form-control input-md">
+                </div>
+              </div>
+            </fieldset>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveSong">Save changes</button>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+
+
+
+
+    <!-- Edit Songs Modal -->
+    <div class="modal fade bs-modal-lg" id="editSongsModal" tabindex="-1" role="dialog" aria-labelledby="editSongsModalTitle">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="editSongsModalTitle">Edit Song List</h4>
+          </div>
+          <div class="modal-body" id='editSongsModalBody'>
+            <p> REPLACE #editSongsModalBody </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id='editSongsModalSubmit'>Save changes</button>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+    <!-- template for editing / deleting a song -->
+    <script id='song-edit-template' type='text/x-handlebars-template'>
+      {{#each songs}}
+      <!-- confused by ../albumId ?  See:
+      http://stackoverflow.com/questions/12297959/access-properties-of-the-parent-with-a-handlebars-each-loop#12297980
+      -->
+      <form class="form-inline" id="{{_id}}" data-album-id="{{../albumId}}" >
+        <div class="form-group">
+          <input type="text" class="form-control song-trackNumber" value="{{trackNumber}}">
+        </div>
+        <div class="form-group">
+          <input type="text" class="form-control song-name" value="{{name}}">
+        </div>
+        <div class="form-group">
+          <button class="btn btn-danger" data-song-id="{{_id}}">x</button>
+        </div>
+      </form>
+      {{/each}}
+    </script>
+  </body>
+
+
+</html>

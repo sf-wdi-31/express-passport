@@ -1,0 +1,26 @@
+{
+  "name": "tunely",
+  "version": "1.0.31",
+  "description": "An app for tracking your music collection",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "bower install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/sf-wdi-labs/tunely.git"
+  },
+  "author": "GA SF WDI",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sf-wdi-labs/tunely/issues"
+  },
+  "homepage": "https://github.com/sf-wdi-labs/tunely#readme",
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "bower": "^1.7.9",
+    "express": "^4.13.3",
+    "mongoose": "^4.6.0"
+  }
+}

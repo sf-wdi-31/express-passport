@@ -1,0 +1,22 @@
+{
+  "name": "tunely",
+  "version": "1.0.31",
+  "homepage": "https://github.com/sf-wdi-labs/tunely",
+  "authors": [
+    "GA SF WDI",
+    "tgaff <tgaff@alumni.nd.edu>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jQuery": "3.1.0",
+    "bootstrap": "~3.3.7",
+    "handlebars": "~4.0.5"
+  }
+}
