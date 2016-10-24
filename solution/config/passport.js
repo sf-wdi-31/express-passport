@@ -36,11 +36,35 @@ function verifyCallback(req, email, password, done) {
   });
 }
 
+loginLocalStrat = new LocalStrategy({
+    usernameField : 'email',        // we're using email instead of username
+    passwordField : 'password',     // will be password from client side
+    passReqToCallback : true        // allow access to request in verify callback
+  }, loginVerifyCallback);
+
+function loginVerifyCallback(req, email, password, done) {
+  // Search for a user with this email
+  db.User.findOne({ 'email' :  email }, function(err, user) {
+    if (err) { // database error
+      return done(err, false);
+    } else if (!user) { // no user found
+      console.log('email not found');
+      return done(null, false);
+    } else if (!user.validPassword(password)) {  // wrong password
+      console.log('invalid password');
+      return done(null, false);
+    }
+    console.log('authenticated', user);
+    return done(null, user);
+  });
+};
+
 
 
 // below everything else in config/passport.js
 module.exports = function(passport) {
   passport.use('local-signup', localStrat);
+  passport.use('local-login', loginLocalStrat);
 
   passport.serializeUser(function(user, done) {
     done(null, user.id);

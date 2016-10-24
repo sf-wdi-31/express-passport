@@ -59,7 +59,7 @@ app.get('/api', controllers.api.index);
 // START @AUTH
 app.post('/api/users', controllers.users.create);
 // app.get('/api/users/:userId', controllers.users.show);
-// app.post('/login', controller.users.login); // could use sessions controller
+app.post('/login', controllers.users.login); // could use sessions controller
 app.get('/logout', controllers.users.logout);  // could use sessions controller
 // END @AUTH
 

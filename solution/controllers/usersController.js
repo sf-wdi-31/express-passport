@@ -15,7 +15,7 @@ function create(req, res){
 
 // GET /api/users/:userId
 function show(req, res) {
-  db.Album.find({_id: req.params.userId}, function(err, user) {
+  db.User.find({_id: req.params.userId}, function(err, user) {
     if(user){
       res.json(user);
     } else {
@@ -24,14 +24,21 @@ function show(req, res) {
   });
 }
 
-function logout(req, res){
-  res.send('yay');
-}
 
 function login(req, res){
-  res.send('yay');
+  var loginAttempt = passport.authenticate('local-login', {
+    successRedirect: '/',
+    failureRedirect: '/'
+  });
+  return loginAttempt(req,res);
 }
 
+function logout(req, res){
+  console.log('logging out', req.user);
+  req.logout();
+  console.log('logged out', req.user);
+  res.redirect('/');
+}
 
 module.exports = {
   create: create,

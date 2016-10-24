@@ -7,7 +7,6 @@
 
 
 $(document).ready(function() {
-  console.log('app.js loaded!');
 
   // START @AUTH
   $signup = $('#signup');
@@ -305,7 +304,6 @@ function renderMultipleAlbums(albums) {
 }
 
 function renderAlbum(album) {
-  console.log('rendering album', album);
   var albumHtml = $('#album-template').html();
   var albumsTemplate = Handlebars.compile(albumHtml);
   var html = albumsTemplate(album);

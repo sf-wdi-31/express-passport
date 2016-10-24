@@ -181,9 +181,6 @@ var passport = require('passport');
 app.use(passport.initialize());
 app.use(passport.session());
 
-// for flash messages
-var flash = require('connect-flash');
-app.use(flash());
 ```
 
 If you're missing any of the node packages above, be sure to install them!
@@ -250,7 +247,7 @@ If you're missing any of the node packages above, be sure to install them!
       if(err) {   // some error in the server or db
         return done(err);
       } else if(user){  // there already is a user with this email
-        return done(null, false, req.flash('signupMessage', 'Email already in use.'));
+        return done(null, false);
       } else { // no errors and email isn't taken - create user!
         var newUser = new db.User();
         newUser.email = email;
@@ -274,14 +271,12 @@ First we try to find a user with the same email, to make sure this email is not 
 
 The result of this may include an error and a user.  If an error is returned, we call the `done` callback on that error.
 
-If a user document is returned, a user with this email already exists.  In this case, we will call the `done` callback  with the two arguments `null` and `false` - the first argument is for when a server error happens; the second one corresponds to the user object, which in this case hasn't been created, so we return false. We can also add a flash message for the error.
+If a user document is returned, a user with this email already exists.  In this case, we will call the `done` callback  with the two arguments `null` and `false` - the first argument is for when a server error happens; the second one corresponds to the user object, which in this case hasn't been created, so we return false.
 
 If no user is returned, it means that the request body can be used to create a new user object. We will, therefore create a new user object, hash the password and save the new created object to our mongo collection. When that is finished successfully, we will call the `done` method on `null` and the new user object created.
 </details>
 
 Based on how we call the `done` function, Passport will know if the strategy has been successfully executed and whether it resulted in an authenticated user or not.
-
-> Note: Using flash messages requires a req.flash() function as of Express 3.x. We've included one with `connect-flash`.
 
 #### Route Handler
 
@@ -305,10 +300,9 @@ The users controller doesn't need to manage all of this logic any more. Switch t
     console.log('creating user', req.body);
     var signupAttempt = passport.authenticate('local-signup', {
       successRedirect: '/',
-      failureRedirect: '/',
-      failureFlash: true  // use flash message from verify callback
+      failureRedirect: '/'
     });
-    return signUpAttempt(req, res);
+    return signupAttempt(req, res);
   }
   ```
 
@@ -320,7 +314,7 @@ Here we are calling the method `authenticate` (given to us by passport) and then
 The second argument tells passport what to do in case of a success or failure.
 
 - If the authentication was successful, then the response will redirect to `/`
-- In case of failure, the response will redirect back to the form `/` and prepare a flash message.
+- In case of failure, the response will redirect back to `/`.
 </details>
 
 #### Passport! Session
@@ -330,178 +324,149 @@ Sessions store some value in a cookie, and this cookie is sent to the server for
 1. To use sessions with Passport, we need to configure our cookies by  creating two new methods in `config/passport.js` :
 
   ```js
-  passport.serializeUser(function(user, done) {
-    done(null, user._id);
-  });
+  module.exports = function(passport) {
+    passport.use('local-signup', localStrat);
 
-  passport.deserializeUser(function(id, done) {
-    db.User.findById(id, function(err, user) {
-      done(err, user);
+    passport.serializeUser(function(user, done) {
+      done(null, user.id);
     });
-  });
+
+    passport.deserializeUser(function(id, done) {
+      db.User.findById(id, function(err, user) {
+        done(err, user);
+      });
+    });
+  };
   ```
 
-What exactly are we doing here? To keep a user logged in, we will need to serialize some information about them and save it in their session.  We've chosen to save the user's `_id`. Then, whenever we want to check whether a user is logged in, we will need to deserialize that information from their session, and check to see whether the deserialized information matches a user in our database.
+<details><summary>What exactly are we doing here?</summary>
+To keep a user logged in, we will need to serialize some information about them and save it in their session.  We've chosen to save the user's `id`. Then, whenever we want to check whether a user is logged in, we will need to deserialize that information from their session and check to see whether the deserialized information matches a user in our database.
 
-The method `serializeUser` will be used when a user signs in or signs up, passport will call this method, our code then call the `done` callback, the second argument is what we want to be serialized.
+Passport will call  `serializeUser` when a user logs in or signs up. In the `done` callback, the second argument is what we want to be serialized for the cookie.  This lets us go from a complex user to an id small enough to fit into a cookie.
 
-The second method will then be called every time there is a value for passport in the session cookie. In this method, we will receive the value stored in the cookie, in our case the `user.id`, then search for a user using this ID and then call the callback. The user object will then be stored in the request object passed to all controller methods calls.
+The `deserializeUser` function will be called every time there is a value for Passport in the session cookie.
 
-## Flash Messages - Intro (5 mins)
+This lets us go from an id to a user. As this function runs, we will receive the value stored in the cookie (the `user.id`), search for a user by id, and then call a `done` callback with the user we found.
 
-Remember Rails? Flash messages were one-time messages that were rendered in the views and when the page was reloaded, the flash was destroyed.  
-
-In our current Node app, back when we have created the signup strategy, in the callback we had this code:
-
-```javascript
-  req.flash('signupMessage', 'This email is already used.')
-```
-
-This will store the message 'This email is already used.' into the response object and then we will be able to use it in the views. This is really useful to send back details about the process happening on the server to the client.
+Passport stores the user object in `req.user` and passes it to all controller method calls.
+</details>
 
 
-## Incorporating Flash Messages - Codealong (5 mins)
+### Test It Out
 
-In the view `signup.hbs`, before the form, add:
+All the logic for the signing up is now set - you should be able to fill out the form and create a user.
 
-```hbs
-  {{#if message}}
-    <div class="alert alert-danger">{{message}}</div>
-  {{/if}}
-```
+### Logging out
 
-Let's add some code into `getSignup` in the users Controller to render the template:
+Follow the instructions in Passport's [documentation on logging out](http://passportjs.org/docs/logout) to enable logging out in your app.
 
-```javascript
-  function getSignup(request, response) {
-    response.render('signup.hbs', { message: request.flash('signupMessage') });
-  }
-```
+### Logging In
 
-Now, start up the app using `nodemon app.js` and visit `http://localhost:3000/signup` and try to signup two times with the same email, you should see the message "This email is already used." appearing when the form is reloaded.
+Now we can write the logic for logging in.
 
+#### Form, Route & Request
 
-## Test it out - Independent Practice (5 mins)
+1. Create a login form if you haven't.
 
-All the logic for the signup is now set - you should be able to go to `/signup` and create a user.
+1. Make sure you have a login route.  One possibility is:
 
+  ```js
+  app.post('/login', controllers.users.login);
+  ```
 
-## Sign-in - Codealong (10 mins)
+1. Set up your login form to make a request to your login route.
 
-Now we need to write the `signin` logic.
+#### Strategy
 
-We also need to implement a custom strategy for the login, In passport.js, after the signup strategy, add add a new LocalStrategy:
+We'll implement another custom strategy for login.
 
-```javascript
-  passport.use('local-login', new LocalStrategy({
-    usernameField : 'email',
-    passwordField : 'password',
-    passReqToCallback : true
-  }, function(req, email, password, callback) {
+1. In `config/passport.js`, after the signup strategy, add add a new LocalStrategy:
 
-  }));
-```
+  ```javascript
+  loginLocalStrat = new LocalStrategy({
+      usernameField : 'email',        // we're using email instead of username
+      passwordField : 'password',     // will be password from client side
+      passReqToCallback : true        // allow access to request in verify callback
+    }, loginVerifyCallback);
 
-The first argument is the same as for the signup strategy - we ask passport to recognize the fields `email` and `password` and to pass the request to the callback function.
+  ```
 
-For this strategy, we will search for a user document using the email received in the request, then if a user is found, we will try to compare the hashed password stored in the database to the one received in the request params. If they are equal, the the user is authenticated; if not, then the password is wrong.
+  > The first argument is the same as for the signup strategy - we ask passport to recognize the fields `email` and `password` and to pass the request to the callback function.
 
-Inside `config/passport.js` let's add this code:
+1. Write the `loginVerifyCallback`.
 
-```javascript
-  ...
-  }, function(req, email, password, callback) {
+  <details><summary>click for explanation</summary>
+  For this strategy, we will search for a user document using the email received in the request. If a user is found, we will compare the hashed password stored in the database to the one received in the request params. If the passwords are a match, the user is authenticated. If they aren't a match, then the password is wrong and the user isn't authenticated.
+  </details>
 
+  <details><summary>click for code</summary>
+
+  ```js
+  function loginVerifyCallback(req, email, password, done) {
     // Search for a user with this email
-    User.findOne({ 'local.email' :  email }, function(err, user) {
-      if (err) {
-        return callback(err);
+    db.User.findOne({ 'email' :  email }, function(err, user) {
+      if (err) { // database error
+        return done(err, false);
+      } else if (!user) { // no user found
+        console.log('email not found');
+        return done(null, false);
+      } else if (!user.validPassword(password)) {  // wrong password
+        console.log('invalid password');
+        return done(null, false);
       }
-
-      // If no user is found
-      if (!user) {
-        return callback(null, false, req.flash('loginMessage', 'No user found.'));
-      }
-      // Wrong password
-      if (!user.validPassword(password)) {
-        return callback(null, false, req.flash('loginMessage', 'Oops! Wrong password.'));
-      }
-
-      return callback(null, user);
+      console.log('authenticated', user);
+      return done(null, user);
     });
-  }));
-  ...
-
-```
-
-#### User validate method
-
-We need to add a new method to the user schema in `user.js` so that we can use the method `user.validatePassword()`. Let's add:
-
-```javascript
-  User.methods.validPassword = function(password) {
-    return bcrypt.compareSync(password, this.local.password);
   };
-```
+  ```
+  </details>
 
-#### Adding flash messages to the view
-
-As we are again using flash messages, we will need to add some code to display them in the view:
-
-In `login.hbs`, add the same code that we added in `signup.hbs` to display the flash messages:
-
-```javascript
-  {{#if message}}
-    <div class="alert alert-danger">{{message}}</div>
-  {{/if}}
-```
-
-#### Login GET Route handler
-
-Now, let's add the code to render the login form in the `getLogin` action in the controller (`users.js`):
-
-```javascript
-  function getLogin(request, response) {
-    response.render('login.hbs', { message: request.flash('loginMessage') });
-  }
-```
-
-You'll notice that the flash message has a different name (`loginMessage`) than the in the signup route handler.
+1. Remember to add the strategy to `module.exports` from `config/passport.js`.
 
 #### Login POST Route handler
 
-We also need to have a route handler that deals with the login form after we have submit it. So in `users.js` lets also add:
+We need a route handler that deals with the login form's data after it's submitted.
+
+This example assumes we've chosen to make this route:
+
+```js
+app.post('/login', controllers.users.login);
+```
+
+1. In the users controller, build out a login method:
+
 
 ```javascript
   function postLogin(request, response) {
     var loginProperty = passport.authenticate('local-login', {
       successRedirect : '/',
-      failureRedirect : '/login',
-      failureFlash : true
+      failureRedirect : '/login'
     });
 
     return loginProperty(request, response);
   }
 ```
 
+
+### Test It Out
+
+
 You should be able to login now!
 
-## Test it out - Independent Practice (5 mins)
+1. Try to login with:
 
-#### Invalid Login
+  - a valid email
+  - a valid password
 
-First try to login with:
+1. Try to log in with:
 
-- a valid email
-- an invalid password
+  - a valid email
+  - an invalid password
 
-You should also see the message 'Oops! Wrong password.'
+1. Try to log in with:
 
-#### Valid Login
-
-Now, try to login with valid details and you should be taken to the index page with a message of "Welcome".
-
-The login strategy has now been setup!
+  - an invalid email
+  - an invalid password
 
 
 #### Accessing the User object globally
