@@ -127,7 +127,7 @@ Let's start with signing up. We'll need:
 
 #### Setup: Password Encryption
 
-At this point, we could save user data into the database, but we'd be saving passwords without any sort of encryption.
+At this point, we could save user data into the database, but we haven't set it up to save a `passwordDigest` since we're just sending a `password` field.  That's okay - we'd be saving passwords without any sort of encryption.
 
 1. The same encryption algorithm we used with Rails is available as a Node module! Install `bcrypt` in your project, then require it into your user model file.
 
@@ -154,12 +154,14 @@ At this point, we could save user data into the database, but we'd be saving pas
 1. Now that we're set up to encrypt passwords, we also need a way to check if the password a user sends us matches the encrypted version we'll store. Create a `validPassword` method that does this check.
 
   ```js
-  User.methods.validPassword = function(password) {
+  userSchema.methods.validPassword = function(password) {
     return bcrypt.compareSync(password, this.local.password);
   };
   ```
 
   > This function is inside the schema's `methods` object so that it will be accessible as an "instance" method. That is, we'll call it with `someUser.validPassword('mypassword')`.  See [mongoose's instance method documentation](http://mongoosejs.com/docs/guide.html#methods).
+
+We'll use these methods soon.
 
 #### Passport! Server File Updates
 
