@@ -165,20 +165,24 @@ We'll use these methods soon.
 
 #### Passport! Server File Updates
 
-In the server file, we'll want a few more items required:
+In the server file, we'll want a few more dependencies required and configured:
 
 ```js
-var passport     = require('passport');
-var flash        = require('connect-flash');  // for flash messages
-var cookieParser = require('cookie-parser');  // cookies!
-var bodyParser   = require('body-parser');
-var session      = require('express-session');  // sessions!
+var expressSession = require('express-session');
+sessionOptions = {
+  secret: 'I am not so secret.',
+  resave: false,
+  saveUninitialized: false
+}
+app.use(expressSession(sessionOptions));
 
-app.use(cookieParser());
-app.use(bodyParser());
-app.use(session({ secret: 'I am not so secret.' }));
+// passport
+var passport = require('passport');
 app.use(passport.initialize());
 app.use(passport.session());
+
+// for flash messages
+var flash = require('connect-flash');
 app.use(flash());
 ```
 
@@ -195,7 +199,7 @@ If you're missing any of the node packages above, be sure to install them!
   ```js
   // below everything else in config/passport.js
   module.exports = function(passport) {
-    passport.use('local', localStrat);  // we'll set up localStrat soon!
+    passport.use('local-signup', localStrat);  // we'll set up localStrat soon!
   };
   ```
 
@@ -205,13 +209,15 @@ If you're missing any of the node packages above, be sure to install them!
     require('./config/passport')(passport);
   ```
 
-1. Inside `config/passport.js`, require `passport-local` and your user model.
+  > This line should come *after* the `passport` variable is defined.
+
+1. Inside `config/passport.js`, require `passport-local` and your database models.
 
   ```javascript
   var passport = require('passport'),
       LocalStrategy = require('passport-local').Strategy;
 
-  var User = require('../models/user');
+  var db = require('../models');
   ```
 
 1. Configure a local strategy for this app.
@@ -222,9 +228,11 @@ If you're missing any of the node packages above, be sure to install them!
     usernameField : 'email',        // we're using email instead of username
     passwordField : 'password',     // will be password from client side
     passReqToCallback : true        // allow access to request in verify callback
-  }, function(req, email, password, done) {  // this is the verify callback
+  }, verifyCalback);
+
+  function verifyCallback(req, email, password, done) {  // this is the verify callback
     // ... more to come here!
-  });
+  }
   ```
 
   > The first argument given to the `LocalStrategy` constructor is an object. It contains some configuration options about the parameters we'll use for authentication. Note that we've chosen to use `email` instead of Passport's default `username` and that we'll be passing the request object into the verify callback.
@@ -233,112 +241,107 @@ If you're missing any of the node packages above, be sure to install them!
 
 
 
-  Now, inside this callback method, we will implement our custom logic to signup a user.
+1. Now, we'll move our logic for signing up a user out of the users controller and into the verify callback.
 
-  ```javascript
-    ...
-    }, function(req, email, password, callback) {
-      // Find a user with this e-mail
-      User.findOne({ 'local.email' :  email }, function(err, user) {
-        if (err) return callback(err);
-
-        // If there already is a user with this email
-        if (user) {
-  	return callback(null, false, req.flash('signupMessage', 'This email is already used.'));
-        } else {
-        // There is no email registered with this emai
-  	// Create a new user
-  	var newUser            = new User();
-  	newUser.local.email    = email;
-  	newUser.local.password = newUser.encrypt(password);
-
-  	newUser.save(function(err) {
-  	  if (err) throw err;
-  	  return callback(null, newUser);
-  	});
-        }
-      });
-    }));
-    ....
+  ```js
+  function verifyCallback(req, email, password, done) {
+    // find a user with this email
+    db.User.findOne({ 'email' :  email }, function(err, user) {
+      if(err) {   // some error in the server or db
+        return done(err);
+      } else if(user){  // there already is a user with this email
+        return done(null, false, req.flash('signupMessage', 'Email already in use.'));
+      } else { // no errors and email isn't taken - create user!
+        var newUser = new db.User();
+        newUser.email = email;
+        newUser.passwordDigest = User.encrypt(password);
+        newUser.save(function(err){
+          if(err){
+            return done(err);
+          }
+          return done(null, newUser);
+        });
+      }
+    });
+  }
 
   ```
 
 
 
+<details><summary>Click for detailed explanation of the verify callback above. </summary>
+First we try to find a user with the same email, to make sure this email is not already use.
 
-First we will try to find a user with the same email, to make sure this email is not already use.
+The result of this may include an error and a user.  If an error is returned, we call the `done` callback on that error.
 
-Once we have the result of this mongo request, we will check if a user document is returned - meaning that a user with this email already exists.  In this case, we will call the `callback` method with the two arguments `null` and `false` - the first argument is for when a server error happens; the second one corresponds to the user object, which in this case hasn't been created, so we return false.
+If a user document is returned, a user with this email already exists.  In this case, we will call the `done` callback  with the two arguments `null` and `false` - the first argument is for when a server error happens; the second one corresponds to the user object, which in this case hasn't been created, so we return false. We can also add a flash message for the error.
 
-If no user is returned, it means that the email received in the request can be used to create a new user object. We will, therefore create a new user object, hash the password and save the new created object to our mongo collection. When all this logic is created, we will call the `callback` method with the two arguments: `null` and the new user object created.
+If no user is returned, it means that the request body can be used to create a new user object. We will, therefore create a new user object, hash the password and save the new created object to our mongo collection. When that is finished successfully, we will call the `done` method on `null` and the new user object created.
+</details>
 
-In the first situation we pass `false` as the second argument, in the second case, we pass a user object to the callback, corresponding to true, based on this argument, passport will know if the strategy has been successfully executed and if the request should redirect to the `success` or `failure` path. (see below).
+Based on how we call the `done` function, Passport will know if the strategy has been successfully executed and whether it resulted in an authenticated user or not.
 
-Note: Using flash messages requires a req.flash() function. Express 2.x provided this functionality, however it was removed from Express 3.x. Use of connect-flash middleware is recommended to provide this functionality when using Express 3.x.
-
-#### User.js
-
-The last thing is to add the method `encrypt` to the user model to hash the password received and save it as encrypted:
-
-```javascript
-  User.methods.encrypt = function(password) {
-    return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
-  };
-```
-
-As we did in the previous lesson, we generate a salt token and then hash the password using this new salt.
-
-That's all for the signup strategy.
+> Note: Using flash messages requires a req.flash() function as of Express 3.x. We've included one with `connect-flash`.
 
 #### Route Handler
 
-Now we need to use this strategy in the route handler.
+The users controller doesn't need to manage all of this logic any more. Switch the controller over to rely on the Passport strategy we've set up.
 
-In the `users.js` controller, for the method `postSignup`, we will add the call to the strategy we've declared
 
-```javascript
-  function postSignup(request, response) {
-    var signupStrategy = passport.authenticate('local-signup', {
-      successRedirect : '/',
-      failureRedirect : '/signup',
-      failureFlash : true
-    });
+1. In the users controller, empty out the method `create`.
 
-    return signupStrategy(request, response);
+  ```js
+  function create(req, res){
+    console.log('creating user', req.body);
+    res.send('signing up sanity check');
   }
-```
+  ```
 
+
+1. Add a call to the strategy we've set up:
+
+  ```js
+  function create(req, res){
+    console.log('creating user', req.body);
+    var signupAttempt = passport.authenticate('local-signup', {
+      successRedirect: '/',
+      failureRedirect: '/',
+      failureFlash: true  // use flash message from verify callback
+    });
+    return signUpAttempt(req, res);
+  }
+  ```
+
+ > See [custom callback](http://passportjs.org/docs/#custom-callback).
+
+<details><summary>click for explanation of code above</summary>
 Here we are calling the method `authenticate` (given to us by passport) and then telling passport which strategy (`'local-signup'`) to use.
 
 The second argument tells passport what to do in case of a success or failure.
 
 - If the authentication was successful, then the response will redirect to `/`
-- In case of failure, the response will redirect back to the form `/signup`
+- In case of failure, the response will redirect back to the form `/` and prepare a flash message.
+</details>
 
+#### Passport! Session
 
-#### Session
+Sessions store some value in a cookie, and this cookie is sent to the server for every request until the session expires or is destroyed. In order to store and transfer the data in the cookie, there has to be some sort of  [serialization](https://en.wikipedia.org/wiki/Serialization).
 
-We've seen in previous lessons that authentication is based on a value stored in a cookie, and then, this cookie is sent to the server for every request until the session expires or is destroyed. This is a form of [serialization](https://en.wikipedia.org/wiki/Serialization).
+1. To use sessions with Passport, we need to configure our cookies by  creating two new methods in `config/passport.js` :
 
-To use the session with passport, we need to create two new methods in `config/passport.js` :
+  ```js
+  passport.serializeUser(function(user, done) {
+    done(null, user._id);
+  });
 
-```javascript
-  module.exports = function(passport) {
-
-    passport.serializeUser(function(user, callback) {
-      callback(null, user.id);
+  passport.deserializeUser(function(id, done) {
+    db.User.findById(id, function(err, user) {
+      done(err, user);
     });
+  });
+  ```
 
-    passport.deserializeUser(function(id, callback) {
-      User.findById(id, function(err, user) {
-          callback(err, user);
-      });
-    });
-  ...
-
-```
-
-What exactly are we doing here? To keep a user logged in, we will need to serialize their user.id to save it to their session. Then, whenever we want to check whether a user is logged in, we will need to deserialize that information from their session, and check to see whether the deserialized information matches a user in our database.
+What exactly are we doing here? To keep a user logged in, we will need to serialize some information about them and save it in their session.  We've chosen to save the user's `_id`. Then, whenever we want to check whether a user is logged in, we will need to deserialize that information from their session, and check to see whether the deserialized information matches a user in our database.
 
 The method `serializeUser` will be used when a user signs in or signs up, passport will call this method, our code then call the `done` callback, the second argument is what we want to be serialized.
 
@@ -584,6 +587,9 @@ Now test it out by clicking on the secret page link. You should see: "This page 
 - Add pages with restricted access.
 
 - Once the user is authenticated, make sure he/she can't access the sign-in or sign-up and redirect with a message, and vice-versa for the logout
+
+### Resources
+- [`express-session`](https://github.com/expressjs/session)
 
 ## Conclusion (5 mins)
 
