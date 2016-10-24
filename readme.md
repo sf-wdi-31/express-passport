@@ -12,9 +12,8 @@ Location: SF
 <!-- framing the "why" in big-picture/real world examples -->
 *This workshop is important because:*
 
-Controlling access to data is a key part of many modern web applications. Rails does a lot of the work of authentication and authorization for us behind the scenes.  Today we'll see that Rails's "local" (in-app) authentication strategy generalizes to other languages and frameworks. We'll use a library called Passport, for NodeJS, and we'll specifically dive into its `passport-local` implementation.  
+Controlling access to data is a key part of many modern web applications. Rails does a lot of the work of authentication and authorization for us behind the scenes.  Today we'll see that Rails's "local" (in-app) authentication strategy generalizes to other languages and frameworks. We'll use a library called Passport, for Node.js, and we'll specifically dive into its `passport-local` implementation.  
 
-Local authentication isn't the only option, though.  We'll get a brief overview of OAuth and token-based strategies, too.
 
 ### What are the objectives?
 <!-- specific/measurable goal for students to achieve -->
@@ -49,150 +48,221 @@ Passport recognizes that each application has unique authentication requirements
 #### Check for Understanding
 
 1. What language and/or framework(s) is Passport meant for?  
-1. What are Passport's main selling points?   
+1. What are Passport's main selling points?  
+1. What are some ways that websites manage authentication?   
 
 
 ### Local Authentication
 
 What was the strategy we used to authenticate users with Ruby on Rails?
 
+1. Working in teams of 3-4, outline what a Rails does to authenticate a user. You should include the entire process of enabling logging in and logging out. Expect that to include forms, requests from the client to various routes on the server, database or session interactions, and the server's responses.  
+
+  <details><summary>click for an example of how you might start signup</summary>
+  - Show signup form with username, password fields (could be part of another page or served at a separate /signup route).
+  - Send signup form details to server with POST /users.
+     - If username exists, redirect back to form with an error message.
+     - If username doesn't exist, create user in database.
+  ..._and so on_
+  </details>
+
+
+1. Which parts of your outline could be reused in any language or framework?
+
+The tactic of checking a username and password combination within your own app is called "local" authentication. It can be more or less secure depending on how you store and send the usernames and passwords.  
+
 ### Strategies in Passport
 
 The main concept when using passport is to register **strategies**.  
 
-In Passport, a strategy is just some NodeJS middleware that we configure to manage authentication.  
+In Passport, a strategy is just some Node.js middleware that we configure to manage authentication.  
 
 With `passport-local`'s `LocalStrategy`, the middleware takes in the user's login information (usually a username and password) as well as a callback. The strategy interacts with the database to check whether the user exists and whether they've used the correct password.  After the check, the callback is called with three arguments:  any server error that occurred (or `null`), any user who was successfully authenticated (or `false`), and an optional error message to specify what went wrong.
 
 Once we have a strategy set up, we can use `passport.authenticate` inside a route or controller to say which authentication strategy to use and what should happen next in cases where authentication succeeds or fails.
 
+Authenticating with passport also gives us handy helper methods like `req.login` and `req.logout` and sets the value of a `req.user` variable!
+
 There are a few configuration steps, and of course we have to set up front-end forms to gather users' login information. Overall, though, Passport allows rather simple, modular authentication for various strategies.
 
 
-## Implementing Passport.js - Codealong (25 mins)
+### Implementing `passport-local`
 
-[documentation from Passport](http://passportjs.org/docs/username-password)
+Passport has some great [documentation](http://passportjs.org/docs/username-password) on how to set up a simple local authentication strategy with username and password.
 
-#### Setup/Review Starter Code
 
-First, clone the starter code
+Before we can implement that, though, we need to have users set up in our app.
 
-    $ git clone https://github.com/ga-dc/express-passport-local-authentication.git
+#### Setup: Routes and View Changes
 
-and setup with `npm install` to ensure that we have all of the correct dependencies.
+1. Add API routes to create users and get the data for a single user. Also add routes to log in and log out.
 
-The starter-code is structured like this:
+1. On the main page of your site, add a form for signing up a new user. It should post to the user create route.  
 
+1. On the main page of your site, add a form for logging in.
+
+1. On the main page of your site, add a link to log out.
+
+<!-- 1. On the main page of your site, add a link to "Profile." We'll set it up to show the current user's information. -->
+
+#### Setup: Creating Users
+
+Let's start with signing up. We'll need:
+
+* the sign up form
+* the route that receives the params sent by the form   
+* a controller/handler to handle and respond to requests on that route
+
+1. We already have a form and a route, so create a handler that responds with a simple "sanity check" response. You can also set up `debugger` or `console.log` to check that the parameters.  Submit the sign up form, and check that you see the server output you expect.  
+
+1. Create a schema and model for user data.  In your schema, we suggest using `email` and `passwordDigest`.
+
+  ```js
+  var userSchema = new Schema({
+    email: String,
+    passwordDigest: String
+  });
+  ```
+
+
+#### Setup: Password Encryption
+
+At this point, we could save user data into the database, but we'd be saving passwords without any sort of encryption.
+
+1. The same encryption algorithm we used with Rails is available as a Node module! Install `bcrypt` in your project, then require it into your user model file.
+
+   ```js
+   var bcrypt = require('bcrypt');
+   ```
+
+1. Set up a salt to use with your passwords.  This adds on some random-looking data to make rainbow table attacks harder.
+
+  ```js
+  var salt = bcrypt.genSaltSync(10);
+  ```
+
+1. Create an `encrypt` method that takes in a user's actual password, uses bcrypt to salt and hash it, and returns the encrypted version.
+
+  ```js
+  userSchema.statics.encrypt = function(password) {
+    return bcrypt.hashSync(password, salt);
+  };
+  ```
+
+  > This function is inside the schema's `statics` object so that it will be accessible as a "static" method of our model. That is, we'll call it with `User.encrypt('mypassword')`.  See [mongoose's static method documentation](http://mongoosejs.com/docs/guide.html#statics).
+
+1. Now that we're set up to encrypt passwords, we also need a way to check if the password a user sends us matches the encrypted version we'll store. Create a `validPassword` method that does this check.
+
+  ```js
+  User.methods.validPassword = function(password) {
+    return bcrypt.compareSync(password, this.local.password);
+  };
+  ```
+
+  > This function is inside the schema's `methods` object so that it will be accessible as an "instance" method. That is, we'll call it with `someUser.validPassword('mypassword')`.  See [mongoose's instance method documentation](http://mongoosejs.com/docs/guide.html#methods).
+
+#### Passport! Server File Updates
+
+In the server file, we'll want a few more items required:
+
+```js
+var passport     = require('passport');
+var flash        = require('connect-flash');  // for flash messages
+var cookieParser = require('cookie-parser');  // cookies!
+var bodyParser   = require('body-parser');
+var session      = require('express-session');  // sessions!
+
+app.use(cookieParser());
+app.use(bodyParser());
+app.use(session({ secret: 'I am not so secret.' }));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(flash());
 ```
-.
-└── app
-    ├── app.js
-    ├── config
-    │   ├── passport.js
-    │   └── routes.js
-    ├── controllers
-    │   └── users.js
-    │   └── statics.js
-    ├── models
-    │   └── user.js
-    ├── package.json
-    ├── public
-    │   └── css
-    │       └── bootstrap.min.css
-    └── views
-        ├── index.hbs
-        ├── layout.hbs
-        ├── login.hbs
-        ├── secret.hbs
-        └── signup.hbs
 
-7 directories, 12 files
-```
+If you're missing any of the node packages above, be sure to install them!
 
-Now let's open the code up in Atom with `atom .`.
+#### Passport! Strategy
 
-#### Users & Statics Controller
+1. Our Passport strategy will handle most of our server's sign up logic. Create a `config` directory and a `config/passport.js` file in your project.
 
-Let's have a quick look at the `users.js` controller. As you can see, the file is structured like a module with 6 empty route handlers:
+1. To connect this file to our server, we'll add a few lines.  
 
-```
-// GET /signup
-// POST /signup
-// GET /login
-// POST /login
-// GET /logout
-// Restricted page
-```
+  * First, at the very bottom of `config/passport.js`:
 
-The statics controller just has the home action.
+  ```js
+  // below everything else in config/passport.js
+  module.exports = function(passport) {
+    passport.use('local', localStrat);  // we'll set up localStrat soon!
+  };
+  ```
 
-#### Routes.js
+  * Also, on the server side,
 
-We have separated the routes into a separate file, to remove them from the app.js file.
+  ```js
+    require('./config/passport')(passport);
+  ```
 
-#### Signup
+1. Inside `config/passport.js`, require `passport-local` and your user model.
 
-First we will implement the signup logic. For this, we will have:
+  ```javascript
+  var passport = require('passport'),
+      LocalStrategy = require('passport-local').Strategy;
 
-1. a route action to display the signup form
-2. a route action to receive the params sent by the form
+  var User = require('../models/user');
+  ```
 
-When the server receives the signup params, the job of saving the user data into the database, hashing the password and validating the data will be delegated to the strategy allocated for this part of the authentication, this logic will be written in `config/passport.js`
+1. Configure a local strategy for this app.
 
-Open the file `config/passport.js` and add:
+  ```js
 
-```javascript
-var LocalStrategy   = require('passport-local').Strategy;
- var User            = require('../models/user');
+  localStrat = new LocalStrategy({
+    usernameField : 'email',        // we're using email instead of username
+    passwordField : 'password',     // will be password from client side
+    passReqToCallback : true        // allow access to request in verify callback
+  }, function(req, email, password, done) {  // this is the verify callback
+    // ... more to come here!
+  });
+  ```
 
- module.exports = function(passport) {
-   passport.use('local-signup', new LocalStrategy({
-     usernameField : 'email',
-     passwordField : 'password',
-     passReqToCallback : true
-   }, function(req, email, password, callback) {
+  > The first argument given to the `LocalStrategy` constructor is an object. It contains some configuration options about the parameters we'll use for authentication. Note that we've chosen to use `email` instead of Passport's default `username` and that we'll be passing the request object into the verify callback.
 
-   }));
-};
-```
+  > The second argument is a "verify callback" function that says how we'll go about authenticating a user based on those parameters.
 
-Here we are declaring the strategy for the signup - the first argument given to `LocalStrategy` is a hash giving info about the fields we will use for the authentication.
 
-By default, passport-local expects to find the fields `username` and `password` in the request. If you use different field names, as we do, you can give this information to `LocalStrategy`.
 
-The third argument will tell the strategy to send the request object to the callback so that we can do further things with it.
+  Now, inside this callback method, we will implement our custom logic to signup a user.
 
-Then, we pass the function that we want to be executed as a callback when this strategy is called: this callback method will receive the request object; the values corresponding to the fields name given in the hash; and the callback method(`done`) to execute when this 'strategy' is done.
+  ```javascript
+    ...
+    }, function(req, email, password, callback) {
+      // Find a user with this e-mail
+      User.findOne({ 'local.email' :  email }, function(err, user) {
+        if (err) return callback(err);
 
-Now, inside this callback method, we will implement our custom logic to signup a user.
+        // If there already is a user with this email
+        if (user) {
+  	return callback(null, false, req.flash('signupMessage', 'This email is already used.'));
+        } else {
+        // There is no email registered with this emai
+  	// Create a new user
+  	var newUser            = new User();
+  	newUser.local.email    = email;
+  	newUser.local.password = newUser.encrypt(password);
 
-```javascript
-  ...
-  }, function(req, email, password, callback) {
-    // Find a user with this e-mail
-    User.findOne({ 'local.email' :  email }, function(err, user) {
-      if (err) return callback(err);
+  	newUser.save(function(err) {
+  	  if (err) throw err;
+  	  return callback(null, newUser);
+  	});
+        }
+      });
+    }));
+    ....
 
-      // If there already is a user with this email
-      if (user) {
-	return callback(null, false, req.flash('signupMessage', 'This email is already used.'));
-      } else {
-      // There is no email registered with this emai
-	// Create a new user
-	var newUser            = new User();
-	newUser.local.email    = email;
-	newUser.local.password = newUser.encrypt(password);
+  ```
 
-	newUser.save(function(err) {
-	  if (err) throw err;
-	  return callback(null, newUser);
-	});
-      }
-    });
-  }));
-  ....
 
-```
+
 
 First we will try to find a user with the same email, to make sure this email is not already use.
 
@@ -201,6 +271,8 @@ Once we have the result of this mongo request, we will check if a user document 
 If no user is returned, it means that the email received in the request can be used to create a new user object. We will, therefore create a new user object, hash the password and save the new created object to our mongo collection. When all this logic is created, we will call the `callback` method with the two arguments: `null` and the new user object created.
 
 In the first situation we pass `false` as the second argument, in the second case, we pass a user object to the callback, corresponding to true, based on this argument, passport will know if the strategy has been successfully executed and if the request should redirect to the `success` or `failure` path. (see below).
+
+Note: Using flash messages requires a req.flash() function. Express 2.x provided this functionality, however it was removed from Express 3.x. Use of connect-flash middleware is recommended to provide this functionality when using Express 3.x.
 
 #### User.js
 
